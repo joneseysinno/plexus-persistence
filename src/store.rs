@@ -104,6 +104,16 @@ impl InfiniteDbStore {
 
         Ok(())
     }
+
+    #[inline]
+    fn id_point(kind: &str, raw: u64) -> Result<DimensionVector, StoreError> {
+        let id = u32::try_from(raw).map_err(|_| {
+            StoreError::Io(format!(
+                "{kind} id {raw} exceeds 1D coordinate limit (u32); refusing lossy u64->u32 mapping"
+            ))
+        })?;
+        Ok(DimensionVector::new(vec![id]))
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +130,7 @@ impl AtomStore for InfiniteDbStore {
     fn put_atom(&mut self, atom: Atom) -> Result<(), StoreError> {
         let bytes = serde_json::to_vec(&atom)
             .map_err(|e| StoreError::Io(PersistenceError::Serialize(e.to_string()).to_string()))?;
-        let point = DimensionVector::new(vec![atom.id.value() as u32]);
+        let point = Self::id_point("atom", atom.id.value())?;
         self.db
             .insert(SPACE_ATOMS, point, bytes)
             .map_err(|e| StoreError::Io(format!("db insert atom: {e}")))?;
@@ -132,7 +142,7 @@ impl AtomStore for InfiniteDbStore {
         if !self.atoms.contains_key(&id) {
             return Err(StoreError::not_found(id.value()));
         }
-        let point = DimensionVector::new(vec![id.value() as u32]);
+        let point = Self::id_point("atom", id.value())?;
         self.db
             .delete(SPACE_ATOMS, point)
             .map_err(|e| StoreError::Io(format!("db delete atom: {e}")))?;
@@ -184,7 +194,7 @@ impl BlockStore for InfiniteDbStore {
     fn put_block(&mut self, block: Block) -> Result<(), StoreError> {
         let bytes = serde_json::to_vec(&block)
             .map_err(|e| StoreError::Io(PersistenceError::Serialize(e.to_string()).to_string()))?;
-        let point = DimensionVector::new(vec![block.id.value() as u32]);
+        let point = Self::id_point("block", block.id.value())?;
         self.db
             .insert(SPACE_BLOCKS, point, bytes)
             .map_err(|e| StoreError::Io(format!("db insert block: {e}")))?;
@@ -196,7 +206,7 @@ impl BlockStore for InfiniteDbStore {
         if !self.blocks.contains_key(&id) {
             return Err(StoreError::not_found(id.value()));
         }
-        let point = DimensionVector::new(vec![id.value() as u32]);
+        let point = Self::id_point("block", id.value())?;
         self.db
             .delete(SPACE_BLOCKS, point)
             .map_err(|e| StoreError::Io(format!("db delete block: {e}")))?;
@@ -244,7 +254,7 @@ impl EdgeStore for InfiniteDbStore {
     fn put_edge(&mut self, edge: HyperEdge) -> Result<(), StoreError> {
         let bytes = serde_json::to_vec(&edge)
             .map_err(|e| StoreError::Io(PersistenceError::Serialize(e.to_string()).to_string()))?;
-        let point = DimensionVector::new(vec![edge.id.value() as u32]);
+        let point = Self::id_point("edge", edge.id.value())?;
         self.db
             .insert(SPACE_EDGES, point, bytes)
             .map_err(|e| StoreError::Io(format!("db insert edge: {e}")))?;
@@ -256,7 +266,7 @@ impl EdgeStore for InfiniteDbStore {
         if !self.edges.contains_key(&id) {
             return Err(StoreError::not_found(id.value()));
         }
-        let point = DimensionVector::new(vec![id.value() as u32]);
+        let point = Self::id_point("edge", id.value())?;
         self.db
             .delete(SPACE_EDGES, point)
             .map_err(|e| StoreError::Io(format!("db delete edge: {e}")))?;
@@ -274,5 +284,70 @@ impl EdgeStore for InfiniteDbStore {
             .take(query.limit.unwrap_or(usize::MAX))
             .collect();
         Ok(QueryResult::new(items, total, query.offset))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tempfile::TempDir;
+
+    use frp_domain::{
+        Atom, AtomKind, AtomMeta, Block, BlockSchema, EdgeSchedule, EdgeTransform, HyperEdge, Meta,
+    };
+    use frp_loom::store::{AtomStore, BlockStore, EdgeStore};
+    use frp_plexus::{AtomId, BlockId, EdgeId, LayerTag, PortId};
+
+    use super::InfiniteDbStore;
+
+    fn open_tmp_store() -> (TempDir, InfiniteDbStore) {
+        let dir = TempDir::new().expect("temp dir");
+        let store = InfiniteDbStore::open(dir.path()).expect("open store");
+        (dir, store)
+    }
+
+    #[test]
+    fn round_trip_atom_block_edge_through_store() {
+        let (_dir, mut store) = open_tmp_store();
+
+        let atom = Atom::new(
+            AtomId::new(7),
+            AtomKind::Transform,
+            AtomMeta::new("roundtrip", LayerTag::Core),
+        );
+        let block = Block {
+            id: BlockId::new(11),
+            schema: BlockSchema::new(vec![], vec![]),
+            atoms: vec![atom.id],
+            meta: Meta::default(),
+        };
+        let edge = HyperEdge::new(
+            EdgeId::new(13),
+            vec![PortId::new(1)],
+            vec![PortId::new(2)],
+            EdgeTransform::PassThrough,
+            EdgeSchedule::OnChange,
+        );
+
+        store.put_atom(atom.clone()).expect("put atom");
+        store.put_block(block.clone()).expect("put block");
+        store.put_edge(edge.clone()).expect("put edge");
+        store.flush().expect("flush");
+
+        assert_eq!(store.get_atom(atom.id).expect("get atom").id, atom.id);
+        assert_eq!(store.get_block(block.id).expect("get block").id, block.id);
+        assert_eq!(store.get_edge(edge.id).expect("get edge").id, edge.id);
+    }
+
+    #[test]
+    fn put_atom_rejects_u64_id_overflow_for_1d_space() {
+        let (_dir, mut store) = open_tmp_store();
+        let atom = Atom::new(
+            AtomId::new(u64::MAX),
+            AtomKind::Transform,
+            AtomMeta::new("overflow", LayerTag::Core),
+        );
+
+        let err = store.put_atom(atom).expect_err("overflow must fail");
+        assert!(err.to_string().contains("exceeds 1D coordinate limit"));
     }
 }
