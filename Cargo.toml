@@ -1,18 +1,18 @@
 [package]
-name = "plexus-persistence"
+name = "frp-persistence"
 version = "0.1.0"
 edition = "2024"
-description = "Durable storage backend for Plexus-Loom using infinite-db."
+description = "Durable storage backend for frp using infinite-db."
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/joneseysinno/plexus-persistence.git"
-documentation = "https://docs.rs/plexus-persistence"
-keywords = ["graph", "storage", "persistence", "loom", "plexus"]
+repository = "https://github.com/joneseysinno/frp-persistence.git"
+documentation = "https://docs.rs/frp-persistence"
+keywords = ["graph", "storage", "persistence", "frp", "infinite-db"]
 categories = ["database-implementations"]
 
 [dependencies]
-plexus-base  = { version = "0.1.0", path = "../plexus-core" }
-loom-base    = { version = "0.1.0", path = "../loom-base" }
-loom-domain  = { version = "0.1.0", path = "../loom-domain" }
+frp-plexus   = { version = "0.1.0", path = "../frp-plexus" }
+frp-loom     = { version = "0.1.0", path = "../frp-loom" }
+frp-domain   = { version = "0.1.0", path = "../frp-domain" }
 infinite-db  = "0.1.2"
 serde_json   = "1"
 serde        = { workspace = true }

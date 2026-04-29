@@ -1,14 +1,14 @@
-//! `plexus-persistence` — durable storage backend for Plexus-Loom.
+//! `frp-persistence` — durable storage backend for infinite-db frp.
 //!
 //! Implements the [`AtomStore`], [`BlockStore`], and [`EdgeStore`] traits from
-//! `loom-base` using [`infinite-db`](https://crates.io/crates/infinite-db)
+//! `frp-loom` using [`infinite-db`](https://crates.io/crates/infinite-db)
 //! as the on-disk storage engine.
 //!
 //! # Quick-start
 //!
 //! ```rust,no_run
-//! use plexus_persistence::InfiniteDbStore;
-//! use loom_base::store::AtomStore;
+//! use frp_persistence::InfiniteDbStore;
+//! use frp_loom::store::AtomStore;
 //!
 //! let mut store = InfiniteDbStore::open("./data").unwrap();
 //! // put / get / delete atoms, blocks, edges through the store traits…

@@ -4,13 +4,13 @@ use std::path::Path;
 use infinite_db::InfiniteDb;
 use infinite_db::infinitedb_core::address::DimensionVector;
 
-use loom_base::error::StoreError;
-use loom_base::query::{Query, QueryResult};
-use loom_base::store::{AtomStore, BlockStore, EdgeStore};
-use loom_domain::atom::Atom;
-use loom_domain::block::Block;
-use loom_domain::edge::HyperEdge;
-use plexus_base::{AtomId, BlockId, EdgeId};
+use frp_loom::error::StoreError;
+use frp_loom::query::{Query, QueryResult};
+use frp_loom::store::{AtomStore, BlockStore, EdgeStore};
+use frp_domain::atom::Atom;
+use frp_domain::block::Block;
+use frp_domain::edge::HyperEdge;
+use frp_plexus::{AtomId, BlockId, EdgeId};
 
 use crate::error::PersistenceError;
 use crate::spaces::{register_spaces, SPACE_ATOMS, SPACE_BLOCKS, SPACE_EDGES};
@@ -19,7 +19,7 @@ use crate::spaces::{register_spaces, SPACE_ATOMS, SPACE_BLOCKS, SPACE_EDGES};
 // InfiniteDbStore
 // ---------------------------------------------------------------------------
 
-/// A durable store for Plexus graph entities backed by [`InfiniteDb`].
+/// A durable store for frp graph entities backed by [`InfiniteDb`].
 ///
 /// Uses a **write-through cache**: all reads are served from in-memory
 /// `HashMap`s (required because the store traits return borrowed `&Self::*`
@@ -35,7 +35,7 @@ pub struct InfiniteDbStore {
 }
 
 impl InfiniteDbStore {
-    /// Open (or create) the database at `dir`, register all Plexus spaces,
+    /// Open (or create) the database at `dir`, register all frp spaces,
     /// and warm the in-memory caches by replaying every live record.
     pub fn open(dir: impl AsRef<Path>) -> Result<Self, StoreError> {
         let mut db = InfiniteDb::open(dir)

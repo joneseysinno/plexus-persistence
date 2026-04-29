@@ -4,16 +4,16 @@ use infinite_db::infinitedb_core::address::SpaceId;
 
 use crate::error::PersistenceError;
 
-/// Space for serialized [`Atom`](loom_domain::atom::Atom) records.
+/// Space for serialized [`Atom`](frp_domain::atom::Atom) records.
 pub const SPACE_ATOMS: SpaceId = SpaceId(1);
 
-/// Space for serialized [`Block`](loom_domain::block::Block) records.
+/// Space for serialized [`Block`](frp_domain::block::Block) records.
 pub const SPACE_BLOCKS: SpaceId = SpaceId(2);
 
-/// Space for serialized [`HyperEdge`](loom_domain::edge::HyperEdge) records.
+/// Space for serialized [`HyperEdge`](frp_domain::edge::HyperEdge) records.
 pub const SPACE_EDGES: SpaceId = SpaceId(3);
 
-/// Register all three Plexus spaces with `db`.
+/// Register all three frp spaces with `db`.
 ///
 /// Safe to call on an already-opened database — duplicate-name and
 /// duplicate-id errors from `infinite-db` are silently ignored so that
